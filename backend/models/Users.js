@@ -28,30 +28,12 @@ const userSchema = new mongoose.Schema({
     },
     // Array to store multiple quiz results
     quizzesTaken: [
-        {
-            quizId: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: 'Quiz', // Assuming there is a Quiz model
-                required: true
-            },
-            score: {
-                type: Number,
-                required: true
-            },
-            resultArray:{
-                type: Array,
-                required: true
-            },
-            violationfound: {
-                type: Boolean,
-                default: false
-            },
-            date: {
-                type: Date,
-                default: Date.now
-            }
-        }
-    ]
+    {
+      quizId: { type: String }, // Change this from ObjectId to String
+      score: { type: Number },
+      resultArray: { type: [Number] },
+    },
+  ],
 });
 
 const User = mongoose.model('User', userSchema);

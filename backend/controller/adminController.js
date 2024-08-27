@@ -1,132 +1,126 @@
-const mongoose = require('mongoose');
-
+const mongoose = require('mongoose')
 const Quiz = require('../models/Questions');
 const User = require('../models/Users');
 
+// Generate a unique 4-digit ID
+const generateFourDigitId = () => Math.floor(1000 + Math.random() * 9000);
+
 const createQuiz = async (req, res) => {
-    const { questions } = req.body;
+  const { title, questions } = req.body;
 
-    try {
-        // Create a new quiz document
-        const quiz = new Quiz({ questions });
+  try {
+    // Convert answers to numbers if required
+    const formattedQuestions = questions.map(q => ({
+      ...q,
+      answer: Number(q.answer)  // Convert answer to a number
+    }));
 
-        // Save the quiz document
-        await quiz.save();
+    const quiz = new Quiz({
+      title,
+      questions: formattedQuestions,
+      id: Math.floor(1000 + Math.random() * 9000)  // Generate a unique 4-digit ID
+    });
 
-        res.status(201).json({ message: 'Quiz created successfully', quiz });
-    } catch (err) {
-        res.status(500).json({ message: 'Error creating quiz', error: err.message });
-    }
-}
-
-const updateQuestion = async (req, res) => {
-    const { quizId, questionId } = req.params;
-    const { question, options, correctOption, points } = req.body;
-
-    try {
-        // Find the quiz by ID
-        const quiz = await Quiz.findById(quizId);
-        if (!quiz) {
-            return res.status(404).json({ message: 'Quiz not found' });
-        }
-
-        // Find the specific question by ID
-        const questionToUpdate = quiz.questions.id(questionId);
-        if (!questionToUpdate) {
-            return res.status(404).json({ message: 'Question not found' });
-        }
-
-        // Update the fields
-        if (question) questionToUpdate.question = question;
-        if (options) questionToUpdate.options = options;
-        if (correctOption !== undefined) questionToUpdate.correctOption = correctOption;
-        if (points !== undefined) questionToUpdate.points = points;
-
-        // Save the updated quiz document
-        await quiz.save();
-
-        res.status(200).json({ message: 'Question updated successfully', quiz });
-    } catch (err) {
-        res.status(500).json({ message: 'Error updating question', error: err.message });
-    }
-}
-
-const deleteQuestion = async (req, res) => {
-    const { quizId, questionId } = req.params;
-
-    try {
-        // Find the quiz by ID
-        const quiz = await Quiz.findById(quizId);
-        if (!quiz) {
-            return res.status(404).json({ message: 'Quiz not found' });
-        }
-
-        // Find the specific question by ID
-        const questionToDelete = quiz.questions.id(questionId);
-        if (!questionToDelete) {
-            return res.status(404).json({ message: 'Question not found' });
-        }
-
-        // Remove the question
-        questionToDelete.remove();
-
-        // Save the updated quiz document
-        await quiz.save();
-
-        res.status(200).json({ message: 'Question deleted successfully', quiz });
-    } catch (err) {
-        res.status(500).json({ message: 'Error deleting question', error: err.message });
-    }
-}
-
-const deleteQuiz = async (req, res) => {
-    const { quizId } = req.params;
-
-    try {
-        // Find the quiz by ID
-        const quiz = await Quiz.findById(quizId);
-        if (!quiz) {
-            return res.status(404).json({ message: 'Quiz not found' });
-        }
-
-        // Remove the quiz
-        await quiz.remove();
-
-        res.status(200).json({ message: 'Quiz deleted successfully' });
-    } catch (err) {
-        res.status(500).json({ message: 'Error deleting quiz', error: err.message });
-    }
-}
-
-const addUser = async (req, res) => {
-    const { name, email, Year, Department, regId, dob } = req.body;
-
-    try {
-        // Check if a user with the same email already exists
-        // const existingUser = await User.findOne({ email });
-        // if (existingUser) {
-        //     return res.status(400).json({ message: 'User already exists with this email' });
-        // }
-
-        // Create a new user instance
-        const newUser = new User({
-            name,
-            email,
-            Year,
-            Department,
-            regId,
-            dob
-        });
-
-        // Save the user to the database
-        await newUser.save();
-
-        // Send a success response
-        res.status(201).json({ message: 'User added successfully', user: newUser });
-    } catch (err) {
-        // Handle errors
-        res.status(500).json({ message: 'Error adding user', error: err.message });
-    }
+    await quiz.save();
+    res.status(201).json({ message: 'Quiz created successfully', quiz });
+  } catch (err) {
+    res.status(500).json({ message: 'Error creating quiz', error: err.message });
+  }
 };
 
-module.exports = { updateQuestion, createQuiz, deleteQuestion, deleteQuiz, addUser };
+const updateQuestion = async (req, res) => {
+  const { quizId, questionIndex } = req.params;
+  const { question, options, answer } = req.body;
+
+  try {
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) return res.status(404).json({ message: 'Quiz not found' });
+
+    if (questionIndex >= quiz.questions.length) {
+      return res.status(404).json({ message: 'Question not found' });
+    }
+
+    const questionToUpdate = quiz.questions[questionIndex];
+    questionToUpdate.question = question || questionToUpdate.question;
+    questionToUpdate.options = options || questionToUpdate.options;
+    questionToUpdate.answer = answer || questionToUpdate.answer;
+
+    await quiz.save();
+    res.status(200).json({ message: 'Question updated successfully', quiz });
+  } catch (err) {
+    res.status(500).json({ message: 'Error updating question', error: err.message });
+  }
+};
+
+const deleteQuestion = async (req, res) => {
+  const { quizId, questionIndex } = req.params;
+
+  try {
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) return res.status(404).json({ message: 'Quiz not found' });
+
+    if (questionIndex >= quiz.questions.length) {
+      return res.status(404).json({ message: 'Question not found' });
+    }
+
+    quiz.questions.splice(questionIndex, 1);
+    await quiz.save();
+    res.status(200).json({ message: 'Question deleted successfully', quiz });
+  } catch (err) {
+    res.status(500).json({ message: 'Error deleting question', error: err.message });
+  }
+};
+
+const deleteQuiz = async (req, res) => {
+  const { quizId } = req.params;
+
+  try {
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) return res.status(404).json({ message: 'Quiz not found' });
+
+    await Quiz.findByIdAndDelete(quizId);
+    res.status(200).json({ message: 'Quiz deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Error deleting quiz', error: err.message });
+  }
+};
+
+const getTopPlayers = async (req, res) => {
+  const { quizId } = req.params;
+
+  try {
+    // Validate the quizId format if necessary
+    // if (!mongoose.Types.ObjectId.isValid(quizId)) {
+    //   return res.status(400).json({ message: 'Invalid quiz ID format' });
+    // }
+
+    const users = await User.aggregate([
+      { $unwind: "$quizzesTaken" },
+      { $match: { "quizzesTaken.quizId": quizId } }, // Directly use quizId without ObjectId conversion
+      { $sort: { "quizzesTaken.score": -1 } },
+      { $group: {
+          _id: "$_id",
+          name: { $first: "$name" },
+          topScore: { $max: "$quizzesTaken.score" }
+      }},
+      { $sort: { topScore: -1 } },
+      { $limit: 5 }
+    ]);
+
+    res.status(200).json({ topPlayers: users });
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching top players', error: err.message });
+  }
+};
+
+
+const getAllQuizzes = async (req, res) => {
+  try {
+    const quizzes = await Quiz.find({});
+    res.status(200).json(quizzes);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching quizzes', error: err.message });
+  }
+};
+
+module.exports = { createQuiz, updateQuestion, deleteQuestion, deleteQuiz, getTopPlayers, getAllQuizzes };
