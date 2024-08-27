@@ -1,25 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 
-const QuizApp = ({ userId, quizId, violationFound }) => {
+const QuizApp = () => {
+  const [quizId, setQuizId] = useState('');  // Input for Quiz ID
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedOptionIndex, setSelectedOptionIndex] = useState(null);
-  const [resultArray, setResultArray] = useState([]); // Array to store 1 for correct and 0 for incorrect answers
+  const [resultArray, setResultArray] = useState([]);  // Array to store 1 for correct and 0 for incorrect answers
   const [quizCompleted, setQuizCompleted] = useState(false);
-  const [quiz, setQuiz] = useState([]); // Holds the quiz data fetched from the API
+  const [quiz, setQuiz] = useState(null);  // Holds the quiz data fetched from the API
 
   // Function to load quiz data from the API
   const loadQuiz = async () => {
     try {
-      const response = await fetch("http://localhost:3030/user/get-quiz/66cb22f0a5df6b7221d8fe15");
-
+      const response = await fetch(`http://localhost:3030/user/get-quiz/${quizId}`);
       if (!response.ok) {
         throw new Error("Failed to fetch quiz");
       }
 
       const quizData = await response.json();
-      localStorage.setItem('quizid', "66cb22f0a5df6b7221d8fe15");
-      setQuiz(quizData.quiz[0].questions); // Assuming the quiz data contains an array of questions
+      localStorage.setItem('quizid', quizId);
+      setQuiz(quizData.quiz.questions);  // Adjusted to match the response structure
     } catch (error) {
       console.error("Error loading quiz:", error);
     }
@@ -33,43 +33,41 @@ const QuizApp = ({ userId, quizId, violationFound }) => {
   // Function to handle the submission of each question
   const handleSubmit = () => {
     if (selectedOptionIndex !== null) {
-      const isCorrect = quiz[currentQuestion].options[selectedOptionIndex] === quiz[currentQuestion].options[quiz[currentQuestion].answer];
+      const isCorrect = quiz[currentQuestion].options[selectedOptionIndex] === quiz[currentQuestion].answer;
       
       // Update the resultArray with the new result
       setResultArray((prevResultArray) => {
         const updatedArray = [...prevResultArray, isCorrect ? 1 : 0];
         
         if (currentQuestion < quiz.length - 1) {
-          setCurrentQuestion(currentQuestion + 1); // Move to the next question
-          setSelectedOptionIndex(null); // Reset the selected option
+          setCurrentQuestion(currentQuestion + 1);  // Move to the next question
+          setSelectedOptionIndex(null);  // Reset the selected option
         } else {
-          setQuizCompleted(true); // Mark quiz as completed when all questions are answered
+          setQuizCompleted(true);  // Mark quiz as completed when all questions are answered
         }
-  
-        return updatedArray; // Return the updated result array
+
+        return updatedArray;  // Return the updated result array
       });
     } else {
       toast.error('Please select an option');
     }
   };
-  
-  
 
   // Function to calculate the score
   const calculateScore = () => {
-    return resultArray.reduce((acc, curr) => acc + curr, 0); // Sum all the correct answers
+    return resultArray.reduce((acc, curr) => acc + curr, 0);  // Sum all the correct answers
   };
 
   // Function to submit the quiz
   const submitQuiz = async () => {
-    const score = calculateScore(); // Calculate the score
+    const score = calculateScore();  // Calculate the score
     const email = localStorage.getItem('email');
     const quizId = localStorage.getItem('quizid');
     const quizData = {
-      email, // Get the email from local storage
+      email,  // Get the email from local storage
       quizId,
-      resultArray, // This contains 1s and 0s for correct/incorrect answers
-      score, // Total score based on correct answers
+      resultArray,  // This contains 1s and 0s for correct/incorrect answers
+      score,  // Total score based on correct answers
     };
 
     try {
@@ -92,8 +90,8 @@ const QuizApp = ({ userId, quizId, violationFound }) => {
     }
 
     setTimeout(() => {
-      window.close(); // Close the quiz window after submission
-    }, 6000); // Delay to let the user see the submission
+      window.close();  // Close the quiz window after submission
+    }, 6000);  // Delay to let the user see the submission
   };
 
   // Trigger quiz submission when the quiz is completed
@@ -103,15 +101,26 @@ const QuizApp = ({ userId, quizId, violationFound }) => {
     }
   }, [quizCompleted]);
 
-  // Load the quiz data on component mount
-  useEffect(() => {
-    loadQuiz();
-  }, []);
-
   return (
     <div className="flex items-center justify-center h-screen bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-lg">
-        {!quizCompleted ? (
+        {!quiz ? (
+          <div>
+            <input
+              type="text"
+              value={quizId}
+              onChange={(e) => setQuizId(e.target.value)}
+              placeholder="Enter Quiz ID"
+              className="border p-2 mb-4 w-full"
+            />
+            <button
+              onClick={loadQuiz}
+              className="w-full py-2 px-4 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600"
+            >
+              Start Quiz
+            </button>
+          </div>
+        ) : !quizCompleted ? (
           quiz.length > 0 ? (
             <>
               <h2 className="text-2xl font-semibold mb-4">{quiz[currentQuestion].question}</h2>
@@ -134,10 +143,7 @@ const QuizApp = ({ userId, quizId, violationFound }) => {
                 ))}
               </div>
               <button
-                onClick={currentQuestion < quiz.length - 1 ? handleSubmit : async () => {
-                  await handleSubmit;
-                  setQuizCompleted(true);
-                }}
+                onClick={currentQuestion < quiz.length - 1 ? handleSubmit : () => setQuizCompleted(true)}
                 className="w-full py-2 px-4 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600"
               >
                 {currentQuestion < quiz.length - 1 ? 'Next Question' : 'Finish Quiz'}

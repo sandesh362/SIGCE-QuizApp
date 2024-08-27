@@ -1,119 +1,209 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const AdminPanel = () => {
-  const [questions, setQuestions] = useState([]);
-  const [newQuestion, setNewQuestion] = useState({
-    question: '',
-    options: ['', '', '', ''],
-    answer: ''
+  const [quizzes, setQuizzes] = useState([]);
+  const [newQuiz, setNewQuiz] = useState({
+    title: '',
+    questions: [
+      { question: '', options: ['', '', '', ''], answer: '' }
+    ]
   });
+  const [selectedQuiz, setSelectedQuiz] = useState(null);
+  const [topPlayers, setTopPlayers] = useState([]);
 
   useEffect(() => {
-    // Fetch existing questions from the server
-    axios.get('http://localhost:3030/quizzes') // Assuming you have an endpoint to get all quizzes
+    // Fetch all quizzes
+    axios.get('http://localhost:3030/admin/quizzes')
       .then(res => {
-        setQuestions(res.data.questions || []);
+        if (Array.isArray(res.data)) {
+          setQuizzes(res.data);
+        } else {
+          console.error('Invalid data format:', res.data);
+          toast.error('invalid data format');
+        }
       })
       .catch(err => {
         console.error('Error fetching quizzes:', err);
+        toast.error('Error fetching quizzes');
       });
   }, []);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewQuestion(prev => ({ ...prev, [name]: value }));
+  const handleQuizTitleChange = (e) => {
+    setNewQuiz(prev => ({ ...prev, title: e.target.value }));
   };
 
-  const handleOptionChange = (index, value) => {
-    const updatedOptions = [...newQuestion.options];
-    updatedOptions[index] = value;
-    setNewQuestion(prev => ({ ...prev, options: updatedOptions }));
+  const handleQuestionChange = (index, e) => {
+    const { name, value } = e.target;
+    const updatedQuestions = [...newQuiz.questions];
+    updatedQuestions[index][name] = value;
+    setNewQuiz(prev => ({ ...prev, questions: updatedQuestions }));
+  };
+
+  const handleOptionChange = (qIndex, oIndex, value) => {
+    const updatedQuestions = [...newQuiz.questions];
+    updatedQuestions[qIndex].options[oIndex] = value;
+    setNewQuiz(prev => ({ ...prev, questions: updatedQuestions }));
   };
 
   const handleAddQuestion = () => {
-    axios.post('http://localhost:3030/admin/create', { questions: [newQuestion] })
+    setNewQuiz(prev => ({
+      ...prev,
+      questions: [...prev.questions, { question: '', options: ['', '', '', ''], answer: '' }]
+    }));
+  };
+
+  const handleCreateQuiz = () => {
+    axios.post('http://localhost:3030/admin/create-quiz', newQuiz)
       .then(res => {
-        setQuestions(prev => [...prev, { ...newQuestion, id: res.data.quiz._id }]);
-        setNewQuestion({ question: '', options: ['', '', '', ''], answer: '' });
+        if (res.data.quiz) {
+          setQuizzes(prev => [...prev, res.data.quiz]);
+          setNewQuiz({ title: '', questions: [{ question: '', options: ['', '', '', ''], answer: '' }] });
+          toast.success('Quiz created successfully');
+        } else {
+          console.error('Invalid data format:', res.data);
+          toast.error('Error creating quiz');
+        }
       })
       .catch(err => {
         console.error('Error creating quiz:', err);
+        toast.error('Error creating quiz');
       });
   };
 
-  const handleDeleteQuestion = (id) => {
-    axios.delete(`http://localhost:3030/admin/delete-question/${id}`)
+  const handleDeleteQuiz = (quizId) => {
+    axios.delete(`http://localhost:3030/admin/delete-quiz/${quizId}`)
       .then(() => {
-        setQuestions(prev => prev.filter(q => q.id !== id));
+        setQuizzes(prev => prev.filter(q => q._id !== quizId));
+        toast.success('Quiz deleted successfully');
       })
       .catch(err => {
-        console.error('Error deleting question:', err);
+        console.error('Error deleting quiz:', err);
+        toast.error('Error deleting quiz');
+      });
+  };
+
+  const handleSelectQuiz = (quizId) => {
+    setSelectedQuiz(quizId);
+    axios.get(`http://localhost:3030/admin/top-players/${quizId}`)
+      .then(res => {
+        if (Array.isArray(res.data.topPlayers)) {
+          setTopPlayers(res.data.topPlayers);
+        } else {
+          console.error('Invalid data format:', res.data);
+          toast.error('Error fetching top players');
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching top players:', err);
+        toast.error('Error fetching top players');
       });
   };
 
   return (
     <div className="p-8 bg-gray-100 min-h-screen">
       <div className="bg-white p-6 rounded-lg shadow-lg mb-6">
-        <h2 className="text-2xl font-semibold mb-4">Add New Question</h2>
+        <h2 className="text-2xl font-semibold mb-4">Create New Quiz</h2>
         <input
           type="text"
-          name="question"
-          value={newQuestion.question}
-          onChange={handleInputChange}
-          placeholder="Question"
+          name="title"
+          value={newQuiz.title}
+          onChange={handleQuizTitleChange}
+          placeholder="Quiz Title"
           className="block w-full mb-4 p-2 border border-gray-300 rounded-lg"
         />
-        {newQuestion.options.map((option, index) => (
-          <div key={index} className="mb-2">
+        {newQuiz.questions.map((q, qIndex) => (
+          <div key={qIndex} className="mb-6">
             <input
               type="text"
-              value={option}
-              onChange={(e) => handleOptionChange(index, e.target.value)}
-              placeholder={`Option ${index + 1}`}
-              className="block w-full mb-1 p-2 border border-gray-300 rounded-lg"
+              name="question"
+              value={q.question}
+              onChange={(e) => handleQuestionChange(qIndex, e)}
+              placeholder={`Question ${qIndex + 1}`}
+              className="block w-full mb-4 p-2 border border-gray-300 rounded-lg"
             />
+            {q.options.map((option, oIndex) => (
+              <div key={oIndex} className="mb-2">
+                <input
+                  type="text"
+                  value={option}
+                  onChange={(e) => handleOptionChange(qIndex, oIndex, e.target.value)}
+                  placeholder={`Option ${oIndex + 1}`}
+                  className="block w-full mb-1 p-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+            ))}
+            <select
+              name="answer"
+              value={q.answer}
+              onChange={(e) => handleQuestionChange(qIndex, e)}
+              className="block w-full mb-4 p-2 border border-gray-300 rounded-lg"
+            >
+              <option value="" disabled>Select correct answer</option>
+              {q.options.map((option, oIndex) => (
+                <option key={oIndex} value={option}>{option}</option>
+              ))}
+            </select>
           </div>
         ))}
-        <select
-          name="answer"
-          value={newQuestion.answer}
-          onChange={handleInputChange}
-          className="block w-full mb-4 p-2 border border-gray-300 rounded-lg"
-        >
-          <option value="" disabled>Select correct answer</option>
-          {newQuestion.options.map((option, index) => (
-            <option key={index} value={option}>{option}</option>
-          ))}
-        </select>
         <button
           onClick={handleAddQuestion}
-          className="w-full py-2 px-4 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600"
+          className="w-full py-2 px-4 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 mb-4"
         >
-          Add Question
+          Add Another Question
+        </button>
+        <button
+          onClick={handleCreateQuiz}
+          className="w-full py-2 px-4 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600"
+        >
+          Create Quiz
         </button>
       </div>
+
       <div>
-        <h2 className="text-2xl font-semibold mb-4">Manage Questions</h2>
-        <ul className="list-disc pl-5">
-          {questions.map((q) => (
-            <li key={q.id} className="mb-4">
-              <div className="text-lg font-semibold mb-2">{q.question}</div>
-              <ul className="list-inside pl-5 mb-2">
-                {q.options.map((option, index) => (
-                  <li key={index} className={`p-1 ${option === q.answer ? 'text-green-600' : ''}`}>{option}</li>
-                ))}
-              </ul>
+        <h2 className="text-2xl font-semibold mb-4">Manage Quizzes</h2>
+        {quizzes.length > 0 ? (
+          quizzes.map((quiz) => (
+            <div key={quiz._id} className="bg-white p-6 rounded-lg shadow-lg mb-4">
+              <h3 className="text-xl font-semibold mb-2">{quiz.title} - ID: {quiz.id}</h3>
               <button
-                onClick={() => handleDeleteQuestion(q.id)}
-                className="py-1 px-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                onClick={() => handleSelectQuiz(quiz.id)}
+                className="py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 mb-2"
               >
-                Delete
+                Show Top Players
               </button>
-            </li>
-          ))}
-        </ul>
+              <button
+                onClick={() => handleDeleteQuiz(quiz._id)}
+                className="py-2 px-4 bg-red-500 text-white rounded-lg hover:bg-red-600"
+              >
+                Delete Quiz
+              </button>
+            </div>
+          ))
+        ) : (
+          <p>No quizzes available.</p>
+        )}
       </div>
+
+      {selectedQuiz && (
+        <div className="mt-8">
+          <h2 className="text-2xl font-semibold mb-4">Top Players for Selected Quiz</h2>
+          <ul>
+            {topPlayers.length > 0 ? (
+              topPlayers.map((player) => (
+                <li key={player._id} className="bg-white p-4 rounded-lg shadow-lg mb-2">
+                  <div className="font-semibold">{player.name}</div>
+                  <div>{player.email}</div>
+                  <div>Top Score: {player.topScore}</div>
+                </li>
+              ))
+            ) : (
+              <p>No top players available for this quiz.</p>
+            )}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };

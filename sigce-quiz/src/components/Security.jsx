@@ -1,6 +1,6 @@
 // src/components/Security.jsx
 
-import React from 'react';
+import {React, useEffect} from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const Security = () => {
@@ -31,6 +31,12 @@ const Security = () => {
       newWindow.focus(); // Focus the new window
     }
   };
+
+  useEffect(()=>{
+    if(!localStorage.getItem('user')){
+    navigate('/')
+  }
+},[])
 
   return (
     <div className="flex items-center justify-center h-screen bg-gray-100">
