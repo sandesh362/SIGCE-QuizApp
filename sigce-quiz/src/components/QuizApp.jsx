@@ -10,6 +10,8 @@ const QuizApp = () => {
   const [resultArray, setResultArray] = useState([]);  // Array to store 1 for correct and 0 for incorrect answers
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [quiz, setQuiz] = useState(null);  // Holds the quiz data fetched from the API
+  const [time, setTime] = useState(0.5 * 60); // 30 minutes in seconds
+  const [isActive, setIsActive] = useState(false);
 
   // Function to load quiz data from the API
   const loadQuiz = async () => {
@@ -93,15 +95,39 @@ const QuizApp = () => {
 
     setTimeout(() => {
       window.close();  // Close the quiz window after submission
-    }, 6000);  // Delay to let the user see the submission
+    }, 3000);  // Delay to let the user see the submission
+  };
+
+  useEffect(() => {
+    let interval = null;
+
+    if (isActive && time > 0) {
+      interval = setInterval(() => {
+        setTime((prevTime) => prevTime - 1);
+      }, 1000);
+    } else if (time === 0) {
+      toast.error("Time Up!! Quiz Is Submitting Now");
+      setIsActive(false);
+      setTimeout(() => {
+        window.close();  // Close the quiz window after submission
+      }, 3000); 
+    }
+
+    return () => clearInterval(interval);
+  }, [isActive, time]);
+
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
   // Trigger quiz submission when the quiz is completed
   useEffect(() => {
-    if (quizCompleted) {
+    if (quizCompleted || violationFound) {
       submitQuiz();
     }
-  }, [quizCompleted]);
+  }, [quizCompleted, violationFound]);
 
   return (
     <div className="flex items-center justify-center h-screen bg-gray-100">
