@@ -1,38 +1,33 @@
 const express = require('express');
+const mongoose = require('mongoose');
+const { readdirSync } = require("fs");
+const dotenv = require('dotenv');
+
+dotenv.config();
+
 const app = express();
-const path = require('path');
-const cors = require('cors');
-const PORT = 3030;
-const connectDB = require('./connection')
+const port = process.env.PORT || 3000;
 
-app.use(express.json());
-app.use(cors());
+// Connect to MongoDB database
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+  .then(() => {
+    console.log('MongoDB connected successfully');
+  })
+  .catch((err) => {
+    console.error('Error connecting to MongoDB:', err);
+  });
 
-// Route to submit answers
-app.post('/submit', (req, res) => {
-    const userAnswers = req.body.answers;
-    let score = 0;
+  readdirSync("./routes").map((route) =>
+    app.use("/api", require(`./routes/${route}`))
+  );
 
-    userAnswers.forEach((answer, index) => {
-        if (answer === quizQuestions[index].answer) {
-            score++;
-        }
-    });
-
-    res.json({ score: score });
+app.get('/', (req, res) => {
+  res.send('Hello World!');
 });
 
-app.use('/admin', require('./routes/admin'));
-app.use('/user', require('./routes/user'));
-
-// app.get('/quiz', (req, res) => {
-//     const filePath = path.join(__dirname, '/questions/Question.json');
-//     res.sendFile(filePath);
-// });
-
-
-
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-    connectDB();
+app.listen(port, () => {
+  console.log(`Server listening on port ${port}`);
 });
