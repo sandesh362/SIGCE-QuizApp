@@ -14,7 +14,7 @@ const Agreement = () => {
     <div className="flex items-center justify-center h-screen bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-lg text-center">
         <h1 className="text-2xl font-semibold mb-4">Quiz Agreement</h1>
-        <p className="mb-4 text-gray-700">
+        <p className="mb-4 text-red-700">
           By proceeding, you agree not to cheat and understand that any violations will result in the quiz being automatically closed.
         </p>
         <button

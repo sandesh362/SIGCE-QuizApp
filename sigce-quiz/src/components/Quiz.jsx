@@ -109,7 +109,7 @@ const Quiz = () => {
 
   return (
     <div className="flex items-center justify-center h-screen bg-gray-100">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-lg text-center">
+      <div className="bg-white p-8 rounded-lg shadow-lg w-full text-center">
         {!quizStarted ? (
           <div>
             <h1 className="text-2xl font-semibold mb-4">Welcome to the Quiz</h1>
